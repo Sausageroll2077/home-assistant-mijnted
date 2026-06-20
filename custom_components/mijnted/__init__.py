@@ -2065,6 +2065,41 @@ async def _migrate_legacy_unique_ids(
             )
 
 
+def _migrate_legacy_device(
+    hass: HomeAssistant, entry: ConfigEntry, meters: List[MeterContext]
+) -> None:
+    """Rename or remove the legacy single device left over from the uniform rename.
+
+    Pre-#50 all entities lived on device ``(DOMAIN, residential_unit)``. After
+    namespacing, that device is empty. If the primary meter's namespaced device
+    doesn't exist yet, rename the legacy device onto it (preserving device-level
+    settings); if it already exists (install already upgraded), remove the empty
+    legacy device so it no longer shows up.
+    """
+    target = next((m for m in meters if m.delivery_type is not None), None)
+    residential_unit = entry.data.get("residential_unit")
+    if target is None or not residential_unit:
+        return
+    try:
+        from homeassistant.helpers import device_registry as dr
+    except Exception:  # pragma: no cover - HA always provides this at runtime
+        return
+    registry = dr.async_get(hass)
+    legacy = registry.async_get_device(identifiers={(DOMAIN, residential_unit)})
+    if legacy is None:
+        return
+    new_identifier = (DOMAIN, f"{residential_unit}_{target.delivery_type}_{target.unit_slug}")
+    try:
+        if registry.async_get_device(identifiers={new_identifier}) is not None:
+            registry.async_remove_device(legacy.id)
+            _LOGGER.info("Removed empty legacy MijnTed device %s", legacy.id)
+        else:
+            registry.async_update_device(legacy.id, new_identifiers={new_identifier})
+            _LOGGER.info("Migrated legacy MijnTed device to %s", new_identifier)
+    except Exception as err:
+        _LOGGER.warning("Failed to migrate/remove legacy device: %s", err)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up MijnTed from a config entry.
 
@@ -2214,6 +2249,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     meters = await _discover_meters(hass, entry, token_update_callback, credentials_callback)
     await _migrate_legacy_unique_ids(hass, entry, meters)
+    _migrate_legacy_device(hass, entry, meters)
 
     def _make_update_method(meter: MeterContext):
         async def _update() -> Dict[str, Any]:
