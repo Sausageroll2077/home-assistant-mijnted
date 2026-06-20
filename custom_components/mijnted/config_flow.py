@@ -311,7 +311,9 @@ class MijnTedOptionsFlowHandler(config_entries.OptionsFlow):
                 options=updated_options,
             )
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
-            return self.async_create_entry(title="", data={})
+            # Return the same options so the flow result does not blank them out
+            # (async_create_entry sets entry.options to whatever it is given).
+            return self.async_create_entry(title="", data=updated_options)
 
         schema: Dict[Any, Any] = {
             vol.Optional(
