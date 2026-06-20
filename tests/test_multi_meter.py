@@ -92,6 +92,22 @@ class TestApiUnitThreading:
         assert api.delivery_type == 2
 
 
+class TestSupersededMeter:
+    def test_old_non_radio_in_radio_room_is_superseded(self):
+        fs = [
+            {"room": "ALG", "deviceNumber": "0465748", "radiographicMeter": False},
+            {"room": "ALG", "deviceNumber": "86066883", "radiographicMeter": True},
+        ]
+        rooms = base.radiographic_rooms(fs)
+        assert base.is_superseded_meter(fs[0], rooms) is True
+        assert base.is_superseded_meter(fs[1], rooms) is False
+
+    def test_standalone_non_radio_is_kept(self):
+        fs = [{"room": "KEU", "deviceNumber": "1", "radiographicMeter": False}]
+        rooms = base.radiographic_rooms(fs)
+        assert base.is_superseded_meter(fs[0], rooms) is False
+
+
 class TestBaseUniqueIdNamespacing:
     def test_namespaced_unique_id(self):
         assert base.MijnTedSensor._namespaced_unique_id(

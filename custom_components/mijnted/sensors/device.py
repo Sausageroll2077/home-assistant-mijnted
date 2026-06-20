@@ -1,6 +1,6 @@
 from typing import Any, Dict, Optional
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from .base import MijnTedSensor, device_class_for, unit_slug
+from .base import MijnTedSensor, device_class_for, is_superseded_meter, radiographic_rooms, unit_slug
 from ..const import DOMAIN, UNIT_MIJNTED
 from ..utils import TranslationUtil
 
@@ -102,16 +102,19 @@ class MijnTedDeviceSensor(MijnTedSensor):
         return f"{label_prefix}device {self.device_number}"
 
     def _room_meter_count(self, room_code: Any) -> int:
-        """Count how many meters in filter_status share the given room code."""
+        """Count visible (non-superseded) meters that share the given room code."""
         data = self.coordinator.data
         if not data:
             return 0
         filter_status = data.get("filter_status", [])
         if not isinstance(filter_status, list):
             return 0
+        radio_rooms = radiographic_rooms(filter_status)
         return sum(
             1 for device in filter_status
-            if isinstance(device, dict) and device.get("room") == room_code
+            if isinstance(device, dict)
+            and device.get("room") == room_code
+            and not is_superseded_meter(device, radio_rooms)
         )
 
     @property
