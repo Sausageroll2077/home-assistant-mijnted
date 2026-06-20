@@ -1290,7 +1290,11 @@ async def _fetch_and_normalize_api_data(api: MijntedApi) -> Dict[str, Any]:
     unit_of_measures_data = _handle_gather_result(
         "unit_of_measures", unit_of_measures_data, [], residential_unit
     )
-    delivery_types = await api.get_delivery_types()
+    # Discover all delivery types with their model and units (issue #50).
+    # discover_delivery_types() also calls get_delivery_types() internally, which
+    # sets api.delivery_type for the single-type endpoints fetched above.
+    delivery_types_detail = await api.discover_delivery_types()
+    delivery_types = [entry["id"] for entry in delivery_types_detail]
     return {
         "energy_usage_data": energy_usage_data,
         "last_update_data": last_update_data,
@@ -1302,6 +1306,7 @@ async def _fetch_and_normalize_api_data(api: MijntedApi) -> Dict[str, Any]:
         "usage_per_room_data": usage_per_room_data,
         "unit_of_measures_data": unit_of_measures_data,
         "delivery_types": delivery_types,
+        "delivery_types_detail": delivery_types_detail,
     }
 
 
@@ -1779,6 +1784,7 @@ def _build_coordinator_return_dict(
     usage_insight_last_year_data: Dict[str, Any],
     active_model: Any,
     delivery_types: List[Any],
+    delivery_types_detail: List[Dict[str, Any]],
     residential_unit_detail_data: Dict[str, Any],
     usage_this_year: Dict[str, Any],
     usage_last_year: Dict[str, Any],
@@ -1802,6 +1808,7 @@ def _build_coordinator_return_dict(
         "usage_insight_last_year": usage_insight_last_year_data,
         "active_model": active_model,
         "delivery_types": delivery_types,
+        "delivery_types_detail": delivery_types_detail,
         "residential_unit": api.residential_unit,
         "residential_unit_detail": residential_unit_detail_data,
         "usage_this_year": usage_this_year,
@@ -2026,6 +2033,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     data["usage_insight_last_year_data"],
                     active_model,
                     data["delivery_types"],
+                    data["delivery_types_detail"],
                     data["residential_unit_detail_data"],
                     usage_this_year,
                     usage_last_year,

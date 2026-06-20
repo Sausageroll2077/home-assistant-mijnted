@@ -46,6 +46,19 @@ STORAGE_KEY = f"{DOMAIN}_monthly_cache"
 MONTH_YEAR_PARTS_COUNT = 2
 DEFAULT_START_VALUE = 0.0
 
+# Delivery types (issue #50: multi-delivery-type support)
+# The ?unitOfMeasure=GJ query parameter is only appended for the heating delivery
+# type when the GJ unit is selected; water types default to m3 and omit it.
+DELIVERY_UNIT_GJ = "GJ"
+# Maps the activeModel code returned per delivery type to a friendly label.
+DELIVERY_TYPE_MODEL_LABELS = {
+    "F59": "Heating",
+    "WMZ": "Heating",
+    "WMZF": "Heating",
+    "WWZ": "Warm water",
+    "KWZ": "Cold water",
+}
+
 # Date format for API requests and storage
 API_DATE_FORMAT = "%Y-%m-%d"
 API_LAST_SYNC_DATE_FORMAT = "%d/%m/%Y"
