@@ -70,6 +70,9 @@ TIMESTAMP_FORMAT_ISO_Z = "%Y-%m-%dT%H:%M:%SZ"
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
 CONF_POLLING_INTERVAL = "polling_interval"
+# Options-flow key: list of enabled meter keys ("<delivery_type>_<unit_slug>").
+# Absent/empty means "all discovered meters" (issue #50).
+CONF_ENABLED_METERS = "enabled_meters"
 
 # Azure B2C authentication constants
 AUTH_TENANT_NAME = "mytedprod"

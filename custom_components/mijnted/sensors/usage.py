@@ -2,9 +2,9 @@ from typing import Any, Dict, List, Optional
 from homeassistant.components.sensor import SensorStateClass
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.components.recorder.models import StatisticData, StatisticMeanType
-from .base import MijnTedSensor
+from .base import MijnTedSensor, native_unit_for
 from ..utils import DataUtil
-from ..const import UNIT_MIJNTED, DEFAULT_START_VALUE
+from ..const import DEFAULT_START_VALUE
 from .models import CurrentData
 
 
@@ -71,7 +71,7 @@ class MijnTedMonthlyUsageSensor(MijnTedSensor):
         Returns:
             Unit string constant
         """
-        return UNIT_MIJNTED
+        return native_unit_for(getattr(self, "meter_unit", None))
     
     @property
     def state_class(self) -> SensorStateClass:
@@ -157,7 +157,7 @@ class MijnTedLastYearMonthlyUsageSensor(MijnTedSensor):
         Returns:
             Unit string constant
         """
-        return UNIT_MIJNTED
+        return native_unit_for(getattr(self, "meter_unit", None))
     
     @property
     def state_class(self) -> SensorStateClass:
@@ -230,7 +230,7 @@ class MijnTedAverageMonthlyUsageSensor(MijnTedSensor):
         Returns:
             Unit string constant
         """
-        return UNIT_MIJNTED
+        return native_unit_for(getattr(self, "meter_unit", None))
     
     @property
     def state_class(self) -> SensorStateClass:
@@ -308,7 +308,7 @@ class MijnTedLastYearAverageMonthlyUsageSensor(MijnTedSensor):
         Returns:
             Unit string constant
         """
-        return UNIT_MIJNTED
+        return native_unit_for(getattr(self, "meter_unit", None))
     
     @property
     def state_class(self) -> SensorStateClass:
@@ -380,7 +380,7 @@ class MijnTedTotalUsageSensor(MijnTedSensor):
         Returns:
             Unit string constant
         """
-        return UNIT_MIJNTED
+        return native_unit_for(getattr(self, "meter_unit", None))
     
     def _collect_total_usage_entries(self, history: List[Any]) -> List[Dict[str, Any]]:
         """Collect and validate history entries for total usage statistics injection."""

@@ -47,7 +47,7 @@ class MijntedApi:
         credentials_callback: Async callback to retrieve credentials for re-authentication (optional).
     """
 
-    def __init__(self, hass, client_id: str, refresh_token: Optional[str] = None, access_token: Optional[str] = None, residential_unit: Optional[str] = None, refresh_token_expires_at: Optional[datetime] = None, token_update_callback: Optional[Callable[[str, Optional[str], Optional[str], Optional[datetime]], Awaitable[None]]] = None, credentials_callback: Optional[Callable[[], Awaitable[tuple]]] = None):
+    def __init__(self, hass, client_id: str, refresh_token: Optional[str] = None, access_token: Optional[str] = None, residential_unit: Optional[str] = None, refresh_token_expires_at: Optional[datetime] = None, token_update_callback: Optional[Callable[[str, Optional[str], Optional[str], Optional[datetime]], Awaitable[None]]] = None, credentials_callback: Optional[Callable[[], Awaitable[tuple]]] = None, delivery_type: Optional[Any] = None, unit: Optional[str] = None):
         """Initialize Mijnted API client.
         
         Args:
@@ -70,7 +70,13 @@ class MijntedApi:
         self.client_id = client_id.strip()
         self.session: Optional[aiohttp.ClientSession] = None
         self.base_url = API_BASE_URL
-        self.delivery_type: Optional[str] = None
+        # When delivery_type is provided it is "pinned": discovery must not
+        # overwrite it with the first available type (issue #50 multi-meter).
+        self.delivery_type: Optional[Any] = delivery_type
+        self._delivery_type_pinned: bool = delivery_type is not None
+        # Selected unit for this client (e.g. "GJ", "m³", "eenheid"); drives the
+        # optional unitOfMeasure query parameter on data endpoints.
+        self.unit: Optional[str] = unit
         self.token_update_callback = token_update_callback
         self.auth: Optional[MijntedAuth] = None
         self._auth_init_params = {
@@ -256,10 +262,32 @@ class MijntedApi:
         """
         url = f"{self.base_url}/address/deliveryTypes/{self.residential_unit}"
         result = await self._make_request("GET", url)
-        first_item = ListUtil.get_first_item(result)
-        if first_item is not None:
-            self.delivery_type = first_item
+        if not self._delivery_type_pinned:
+            first_item = ListUtil.get_first_item(result)
+            if first_item is not None:
+                self.delivery_type = first_item
         return result if isinstance(result, list) else []
+
+    def _with_unit(self, url: str) -> str:
+        """Append the unitOfMeasure query parameter to a URL when applicable.
+
+        Uses the client's selected unit; only the GJ unit adds the parameter
+        (water types default to m³ and omit it). Preserves any existing query
+        string already present on the URL.
+
+        Args:
+            url: The fully-built request URL.
+
+        Returns:
+            The URL with ``unitOfMeasure=GJ`` appended when the selected unit is
+            GJ, otherwise the URL unchanged.
+        """
+        params = self.unit_query_params(self.unit)
+        if not params:
+            return url
+        separator = "&" if "?" in url else "?"
+        query = "&".join(f"{key}={value}" for key, value in params.items())
+        return f"{url}{separator}{query}"
 
     async def get_energy_usage(self, year: Optional[int] = None) -> Dict[str, Any]:
         """Get energy usage data for a specific year.
@@ -272,7 +300,7 @@ class MijntedApi:
         """
         if year is None:
             year = self._get_current_year()
-        url = f"{self.base_url}/residentialUnitUsage/{year}/{self.residential_unit}/{self.delivery_type}"
+        url = self._with_unit(f"{self.base_url}/residentialUnitUsage/{year}/{self.residential_unit}/{self.delivery_type}")
         return await self._make_request("GET", url)
 
     async def get_last_data_update(self) -> Dict[str, Any]:
@@ -281,7 +309,7 @@ class MijntedApi:
         Returns:
             Dictionary containing last sync date information
         """
-        url = f"{self.base_url}/getLastSyncDate/{self.residential_unit}/{self.delivery_type}/{self._get_current_year()}"
+        url = self._with_unit(f"{self.base_url}/getLastSyncDate/{self.residential_unit}/{self.delivery_type}/{self._get_current_year()}")
         return await self._make_request("GET", url)
 
     async def get_filter_status(self) -> List[Dict[str, Any]]:
@@ -290,7 +318,7 @@ class MijntedApi:
         Returns:
             List of device status objects, empty list if none found
         """
-        url = f"{self.base_url}/deviceStatuses/{self.residential_unit}/{self.delivery_type}/{self._get_current_year()}"
+        url = self._with_unit(f"{self.base_url}/deviceStatuses/{self.residential_unit}/{self.delivery_type}/{self._get_current_year()}")
         result = await self._make_request("GET", url)
         if isinstance(result, list):
             return result
@@ -309,7 +337,7 @@ class MijntedApi:
         try:
             date_str = target_date.strftime(API_DATE_FORMAT)
             year = target_date.year
-            url = f"{self.base_url}/deviceStatuses/{self.residential_unit}/{self.delivery_type}/{year}?fromDate={date_str}"
+            url = self._with_unit(f"{self.base_url}/deviceStatuses/{self.residential_unit}/{self.delivery_type}/{year}?fromDate={date_str}")
             result = await self._make_request("GET", url)
             if isinstance(result, list):
                 return result
@@ -336,7 +364,7 @@ class MijntedApi:
         """
         if year is None:
             year = self._get_current_year()
-        url = f"{self.base_url}/usageInsight/{year}/{self.residential_unit}/{self.delivery_type}"
+        url = self._with_unit(f"{self.base_url}/usageInsight/{year}/{self.residential_unit}/{self.delivery_type}")
         return await self._make_request("GET", url)
 
     async def get_active_model(self) -> Dict[str, Any]:
@@ -369,7 +397,7 @@ class MijntedApi:
         """
         if year is None:
             year = self._get_current_year()
-        url = f"{self.base_url}/residentialUnitUsagePerRoom/{year}/{self.residential_unit}/{self.delivery_type}"
+        url = self._with_unit(f"{self.base_url}/residentialUnitUsagePerRoom/{year}/{self.residential_unit}/{self.delivery_type}")
         return await self._make_request("GET", url)
 
     async def get_unit_of_measures(self) -> List[Dict[str, Any]]:

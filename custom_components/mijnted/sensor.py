@@ -34,8 +34,26 @@ async def async_setup_entry(
         entry: Configuration entry
         async_add_entities: Callback to add entities
     """
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    
+    store = hass.data[DOMAIN][entry.entry_id]
+    coordinators = store["coordinators"]
+    meters = store["meters"]
+
+    sensors: List[SensorEntity] = []
+    for meter in meters:
+        coordinator = coordinators.get(meter.key)
+        if coordinator is None:
+            continue
+        sensors.extend(_build_meter_sensors(coordinator))
+
+    async_add_entities(sensors, True)
+
+
+def _build_meter_sensors(coordinator) -> List[SensorEntity]:
+    """Build the full sensor set for a single meter's coordinator.
+
+    Meter identity (delivery type / unit / label) is derived by each sensor from
+    the per-meter coordinator data, so unique_ids and devices are namespaced.
+    """
     sensors: List[SensorEntity] = [
         MijnTedMonthlyUsageSensor(coordinator),
         MijnTedLastUpdateSensor(coordinator),
@@ -50,8 +68,9 @@ async def async_setup_entry(
         MijnTedLastYearMonthlyUsageSensor(coordinator),
         MijnTedLatestAvailableInsightSensor(coordinator)
     ]
-    
-    filter_status = coordinator.data.get("filter_status", [])
+
+    data = coordinator.data or {}
+    filter_status = data.get("filter_status", [])
     if isinstance(filter_status, list):
         seen_devices = set()
         for device in filter_status:
@@ -62,5 +81,5 @@ async def async_setup_entry(
                     if device_id not in seen_devices:
                         seen_devices.add(device_id)
                         sensors.append(MijnTedDeviceSensor(coordinator, device_id))
-    
-    async_add_entities(sensors, True)
+
+    return sensors
