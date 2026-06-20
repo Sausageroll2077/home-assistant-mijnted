@@ -1,6 +1,6 @@
 from typing import Any, Dict, Optional
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from .base import MijnTedSensor, unit_slug
+from .base import MijnTedSensor, device_class_for, unit_slug
 from ..const import DOMAIN, UNIT_MIJNTED
 from ..utils import TranslationUtil
 
@@ -41,8 +41,14 @@ class MijnTedDeviceSensor(MijnTedSensor):
             label=label,
         )
         self.device_number = device_number
-        self._attr_icon = "mdi:radiator"
         self._attr_suggested_display_precision = 0
+
+    @property
+    def icon(self) -> str:
+        """Return an icon matching the meter type (water vs. heating)."""
+        if device_class_for(getattr(self, "meter_unit", None)) is not None:
+            return "mdi:water"
+        return "mdi:radiator"
 
     @property
     def _device_data(self) -> Optional[Dict[str, Any]]:
@@ -88,8 +94,25 @@ class MijnTedDeviceSensor(MijnTedSensor):
             room_code = device_data['room']
             hass = getattr(self.coordinator, 'hass', None)
             room_name = TranslationUtil.translate_room_code(room_code, hass)
+            # Disambiguate when a room contains more than one meter so they don't
+            # share an identical display name.
+            if self._room_meter_count(room_code) > 1:
+                return f"{label_prefix}device {room_name} {self.device_number}"
             return f"{label_prefix}device {room_name}"
         return f"{label_prefix}device {self.device_number}"
+
+    def _room_meter_count(self, room_code: Any) -> int:
+        """Count how many meters in filter_status share the given room code."""
+        data = self.coordinator.data
+        if not data:
+            return 0
+        filter_status = data.get("filter_status", [])
+        if not isinstance(filter_status, list):
+            return 0
+        return sum(
+            1 for device in filter_status
+            if isinstance(device, dict) and device.get("room") == room_code
+        )
 
     @property
     def state(self) -> Any:
