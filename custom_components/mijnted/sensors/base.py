@@ -48,6 +48,29 @@ def device_class_for(unit: Optional[str]) -> Optional[SensorDeviceClass]:
     if unit and unit.strip().lower() in ("m³", "m3"):
         return SensorDeviceClass.WATER
     return None
+
+
+def radiographic_rooms(filter_status: Any) -> set:
+    """Return the set of room codes that contain a radiographic meter."""
+    if not isinstance(filter_status, list):
+        return set()
+    return {
+        device.get("room")
+        for device in filter_status
+        if isinstance(device, dict) and device.get("radiographicMeter")
+    }
+
+
+def is_superseded_meter(device: Dict[str, Any], radio_rooms: set) -> bool:
+    """Return True for an old non-radiographic meter replaced by a radio one.
+
+    A non-radiographic meter is considered superseded when a radiographic meter
+    exists in the same room (the decommissioned mechanical meter the radio one
+    replaced). Standalone non-radiographic meters are kept.
+    """
+    if not isinstance(device, dict) or device.get("radiographicMeter"):
+        return False
+    return device.get("room") in radio_rooms
 from ..utils import DateUtil, DataUtil
 from .models import (
     CurrentData,

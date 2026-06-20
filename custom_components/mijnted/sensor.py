@@ -5,6 +5,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
+from .sensors.base import is_superseded_meter, radiographic_rooms
 from .sensors import (
     MijnTedMonthlyUsageSensor,
     MijnTedLastUpdateSensor,
@@ -72,9 +73,12 @@ def _build_meter_sensors(coordinator) -> List[SensorEntity]:
     data = coordinator.data or {}
     filter_status = data.get("filter_status", [])
     if isinstance(filter_status, list):
+        radio_rooms = radiographic_rooms(filter_status)
         seen_devices = set()
         for device in filter_status:
             if isinstance(device, dict):
+                if is_superseded_meter(device, radio_rooms):
+                    continue
                 device_number = device.get("deviceNumber")
                 if device_number is not None:
                     device_id = str(device_number)
