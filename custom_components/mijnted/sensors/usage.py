@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 from homeassistant.components.sensor import SensorStateClass
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.components.recorder.models import StatisticData, StatisticMeanType
-from .base import MijnTedSensor, native_unit_for
+from .base import MijnTedSensor, display_precision_for, native_unit_for
 from ..utils import DataUtil
 from ..const import DEFAULT_START_VALUE
 from .models import CurrentData
@@ -25,7 +25,7 @@ class MijnTedMonthlyUsageSensor(MijnTedSensor):
         """
         super().__init__(coordinator, "monthly_usage", "monthly usage")
         self._attr_icon = "mdi:lightning-bolt"
-        self._attr_suggested_display_precision = 0
+        self._attr_suggested_display_precision = display_precision_for(self.meter_unit)
 
     @property
     def state(self) -> Optional[float]:
@@ -130,7 +130,7 @@ class MijnTedLastYearMonthlyUsageSensor(MijnTedSensor):
         """
         super().__init__(coordinator, "last_year_monthly_usage", "last year monthly usage")
         self._attr_icon = "mdi:lightning-bolt"
-        self._attr_suggested_display_precision = 0
+        self._attr_suggested_display_precision = display_precision_for(self.meter_unit)
 
     @property
     def state(self) -> Optional[float]:
@@ -200,7 +200,7 @@ class MijnTedAverageMonthlyUsageSensor(MijnTedSensor):
         """
         super().__init__(coordinator, "average_monthly_usage", "average monthly usage")
         self._attr_icon = "mdi:chart-line"
-        self._attr_suggested_display_precision = 0
+        self._attr_suggested_display_precision = display_precision_for(self.meter_unit)
 
     @property
     def state(self) -> Optional[float]:
@@ -281,7 +281,7 @@ class MijnTedLastYearAverageMonthlyUsageSensor(MijnTedSensor):
         """
         super().__init__(coordinator, "last_year_average_monthly_usage", "last year average monthly usage")
         self._attr_icon = "mdi:chart-line-variant"
-        self._attr_suggested_display_precision = 0
+        self._attr_suggested_display_precision = display_precision_for(self.meter_unit)
 
     @property
     def state(self) -> Optional[float]:
@@ -352,7 +352,7 @@ class MijnTedTotalUsageSensor(MijnTedSensor):
         super().__init__(coordinator, "total_usage", "total usage")
         self._attr_icon = "mdi:lightning-bolt"
         self._attr_state_class = SensorStateClass.TOTAL_INCREASING
-        self._attr_suggested_display_precision = 0
+        self._attr_suggested_display_precision = display_precision_for(self.meter_unit)
 
     @property
     def state(self) -> Optional[float]:

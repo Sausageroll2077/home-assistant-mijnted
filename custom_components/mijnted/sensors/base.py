@@ -43,6 +43,20 @@ def native_unit_for(unit: Optional[str]) -> str:
     return UNIT_MIJNTED
 
 
+def display_precision_for(unit: Optional[str]) -> int:
+    """Return the suggested display precision (decimal places) for a unit.
+
+    Water (m³) and heating (GJ) carry fractional readings, so they are shown
+    with 3 decimals; otherwise the count-based "Units" stay whole numbers.
+    """
+    if not unit:
+        return 0
+    normalized = unit.strip().lower()
+    if normalized in ("m³", "m3", "gj"):
+        return 3
+    return 0
+
+
 def device_class_for(unit: Optional[str]) -> Optional[SensorDeviceClass]:
     """Return the SensorDeviceClass for a unit, or None when not applicable."""
     if unit and unit.strip().lower() in ("m³", "m3"):
