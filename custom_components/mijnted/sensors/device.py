@@ -1,6 +1,6 @@
 from typing import Any, Dict, Optional
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from .base import MijnTedSensor, device_class_for, is_superseded_meter, radiographic_rooms, unit_slug
+from .base import MijnTedSensor, device_class_for, display_precision_for, is_superseded_meter, radiographic_rooms, unit_slug
 from ..const import DOMAIN, UNIT_MIJNTED
 from ..utils import TranslationUtil
 
@@ -41,7 +41,7 @@ class MijnTedDeviceSensor(MijnTedSensor):
             label=label,
         )
         self.device_number = device_number
-        self._attr_suggested_display_precision = 0
+        self._attr_suggested_display_precision = display_precision_for(self.meter_unit)
 
     @property
     def icon(self) -> str:
